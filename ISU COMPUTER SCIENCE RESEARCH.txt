@@ -1,0 +1,64 @@
+
+
+AUTHOR COLLABORATION COMPUTER SCIENCE RESEARCH ISU
+
+
+
+//TODO: Declare the graph and output path.
+//START CODE HERE
+DECLARE @Param_GraphDir  string = "wasb://mag-2019-11-22@mag661project/mag/";
+DECLARE @Param_GraphDirAdv  string = "wasb://mag-2019-11-22@mag661project/advanced/";
+
+DECLARE @In_Affiliation string = @Param_GraphDir + "Affiliations.txt";
+DECLARE @In_Authors string = @Param_GraphDir + "Authors.txt";
+DECLARE @In_PaperAuthors string = @Param_GraphDir + "PaperAuthorAffiliations.txt";
+DECLARE @In_Paper string = @Param_GraphDir + "Papers.txt";
+DECLARE @In_Conference string = @Param_GraphDir + "ConferenceSeries.txt";
+DECLARE @In_PaperFields string = @Param_GraphDirAdv + "PaperFieldsOfStudy.txt";
+
+@paperAuthorAffiliation =
+    EXTRACT
+    PaperId	long,
+    AuthorId	long,
+    AffiliationId	long?,
+	AuthorSequenceNumber	uint,	
+	OriginalAuthor	string,	
+	OriginalAffiliation	string     
+    FROM @In_PaperAuthors
+    USING Extractors.Text(delimiter: '\t', skipFirstNRows: 1, quoting: false, silent: true);
+
+	  
+@fieldsOfStudy =
+   EXTRACT
+   PaperId	long,
+   FieldOfStudyId	long,
+   Score	float
+    FROM @In_PaperFields
+    USING Extractors.Text(delimiter: '\t', skipFirstNRows: 1, quoting: false, silent: true);
+       
+    
+@authorAuthorFields =
+     SELECT a.AuthorId AS AuthorNum,
+           a.OriginalAuthor AS AuthorName, 
+		   b.PaperId
+           
+    FROM @paperAuthorAffiliation AS a
+         INNER JOIN
+             @fieldsOfStudy AS b
+         ON a.PaperId == b.PaperId
+    WHERE a.AffiliationId == 173911158 AND b.FieldOfStudyId == 41008148;
+
+
+@authorPairs =
+    SELECT z.AuthorNum AS AuthorA, z.AuthorName AS AuthorNameA,
+           a.AuthorNum AS AuthorB, a.AuthorName AS AuthorNameB
+           
+    FROM @authorAuthorFields AS z
+         INNER JOIN
+             @authorAuthorFields AS a
+         ON z.PaperId == a.PaperId
+    WHERE z.AuthorNum < a.AuthorNum;
+
+OUTPUT @authorPairs
+TO "/outAuthourPair.tsv"
+USING Outputters.Tsv();
