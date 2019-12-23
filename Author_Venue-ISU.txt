@@ -1,0 +1,76 @@
+﻿
+AUTHOR-VENUE ISU GRAPH
+
+@paperAuthorAffiliation =
+    EXTRACT
+    PaperId	long,
+    AuthorId	long,
+    AffiliationId	long?,
+	AuthorSequenceNumber	uint,	
+	OriginalAuthor	string,	
+	OriginalAffiliation	string     
+    FROM @In_PaperAuthors
+    USING Extractors.Text(delimiter: '\t', skipFirstNRows: 1, quoting: false, silent: true);
+   
+@paperTable =
+   EXTRACT
+    PaperId	long,
+	Rank	uint,	
+	Doi	string,	
+	DocType	string,
+	PaperTitle	string,	
+	OriginalTitle	string,	
+	BookTitle	string,	
+	Year	int?,	
+	Date	DateTime?,	
+	Publisher	string,	
+	JournalId	long?,
+	ConferenceSeriesId	long?,
+	ConferenceInstanceId	long?,
+	Volume	string,	
+	Issue	string,	
+	FirstPage	string,	
+	LastPage	string,	
+	ReferenceCount	long,	
+	CitationCount	long,	
+	EstimatedCitation	long,	
+	OriginalVenue	string,	
+	FamilyId	long?,	
+	CreatedDate	DateTime
+	FROM @In_Paper	
+//USING Extractors.Text(delimiter: '\t', skipFirstNRows: 1, quoting: false, silent: true);
+   USING Extractors.Text(delimiter: '\t', skipFirstNRows: 1, quoting: false, silent: true);
+
+/*@conference =
+EXTRACT 
+ConferenceSeriesId	long,
+	Rank	uint,	
+	NormalizedName	string,	
+	DisplayName	string,	
+	PaperCount	long,	
+	CitationCount	long,	
+	CreatedDate	DateTime
+	FROM @In_Conference
+    USING Extractors.Text(delimiter: '\t', skipFirstNRows: 1, quoting: false, silent: true);
+	//USING Extractors.Text(delimiter: '\t', skipFirstNRows: 1, quoting: false, silent: true);
+*/
+@authorVenue =  SELECT a.AuthorId AS AuthorNum,
+           a.OriginalAuthor AS AuthorName, a.OriginalAffiliation AS Institution,
+		   b.ConferenceSeriesId AS ConferenceNum, b.PaperTitle AS PaperTitle
+           
+    FROM @paperAuthorAffiliation AS a
+         INNER JOIN
+             @paperTable AS b
+         ON a.PaperId == b.PaperId
+    WHERE a.AffiliationId == 173911158 AND (b.ConferenceSeriesId == 1184914352 OR b.ConferenceSeriesId == 1141769385
+	 OR b.ConferenceSeriesId == 1130985203 OR b.ConferenceSeriesId == 1180662882 OR b.ConferenceSeriesId ==1127325140) ;
+
+/*@authorVenueISU = SELECT x.AuthorName AS Author, x.Institution, x.PaperTitle,
+                y.NormalizedName
+  FROM @authorVenue AS x
+  INNER JOIN
+     @conference AS y  
+	 ON x.ConferenceNum == y.ConferenceSeriesId;*/ 
+OUTPUT @authorVenue
+TO "/outAuthourV1.tsv"
+USING Outputters.Tsv();
